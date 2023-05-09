@@ -30,7 +30,6 @@ export type BasicChannelTabsProps = {
 };
 export interface ChannelTabsProps extends BasicChannelTabsProps {
     id: number;
-    index: number;
 }
 interface PersistedTabs {
     [userId: string]: {
@@ -88,7 +87,7 @@ const openTabHistory: number[] = [];
 function createTab(props: BasicChannelTabsProps, moveToTab?: boolean, messageId?: string) {
     const { channelId, guildId } = props;
     const id = genId();
-    openTabs.push({ ...props, id, index: openTabs.length });
+    openTabs.push({ ...props, id });
     if (moveToTab) setOpenTab(id);
     else return;
 
@@ -106,9 +105,6 @@ function closeTab(id: number) {
     if (openTabs.length <= 1) return;
     const i = openTabs.findIndex(v => v.id === id);
     if (i === -1) return logger.error("Couldn't find channel tab with ID " + id, openTabs);
-    for (let j = i; j < openTabs.length; ++j) {
-        openTabs[j].index--;
-    }
     const closed = openTabs.splice(i, 1);
     closedTabs.push(...closed);
     if (id === currentlyOpenTab) {
@@ -166,7 +162,6 @@ function handleChannelSwitch(ch: BasicChannelTabsProps) {
     if (tab.channelId !== ch.channelId)
         openTabs[openTabs.indexOf(tab)] = {
             id: tab.id,
-            index: tab.index,
             ...ch,
         };
 }
@@ -262,9 +257,6 @@ function reopenClosedTab() {
 export function repositionTab(startIdx: number, endIdx: number) {
     const tabToMove = openTabs.splice(startIdx, 1)[0];
     openTabs.splice(endIdx, 0, tabToMove);
-    for (let i = 0; i < openTabs.length; ++i) {
-        openTabs[i].index = i;
-    }
 }
 
 export const ChannelTabsUtils = {
