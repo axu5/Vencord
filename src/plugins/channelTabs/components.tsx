@@ -28,7 +28,7 @@ import {
 } from "@webpack/common";
 import { FluxStore } from "@webpack/types";
 import { Channel, Guild, User } from "discord-types/general";
-import { DragEvent } from "react";
+import { DragEvent, useRef } from "react";
 
 import { BasicChannelTabsProps, ChannelTabsProps, channelTabsSettings, ChannelTabsUtils, repositionTab } from "./util.js";
 
@@ -274,6 +274,8 @@ export function ChannelsTabsContainer(props: BasicChannelTabsProps & { userId: s
     const { openTabs } = ChannelTabsUtils;
     let { userId } = props;
     const _update = useForceUpdater();
+    const draggingFrom = useRef<number>(0);
+    const draggingTo = useRef<number>(0);
     function update() {
         _update();
         saveTabs(userId);
@@ -316,18 +318,8 @@ export function ChannelsTabsContainer(props: BasicChannelTabsProps & { userId: s
         }
     }
 
-    let dragging = 0;
-    let draggingTo = 0;
-    function handleDragStart(e: DragEvent<HTMLDivElement>, tabIndex: number) {
-        dragging = tabIndex;
-    }
-
-    function handleDragEnter(e: DragEvent<HTMLDivElement>, tabIndex: number) {
-        draggingTo = tabIndex;
-    }
-
-    function handleDragEnd(e: DragEvent<HTMLDivElement>, tabIndex: number) {
-        repositionTab(dragging, draggingTo);
+    function handleDragEnd(_e: DragEvent<HTMLDivElement>, tabIndex: number) {
+        repositionTab(draggingFrom.current, draggingTo.current);
         _update();
     }
 
@@ -344,8 +336,8 @@ export function ChannelsTabsContainer(props: BasicChannelTabsProps & { userId: s
                         update();
                     }
                 }}
-                onDragStart={e => handleDragStart(e, i)}
-                onDragEnter={e => handleDragEnter(e, i)}
+                onDragStart={() => draggingFrom.current = i}
+                onDragEnter={() => draggingTo.current = i}
                 onDragEnd={e => handleDragEnd(e, i)}
                 draggable
                 onContextMenu={e => ContextMenu.open(e, () => <ChannelContextMenu tab={ch} update={update} />)}
