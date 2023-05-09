@@ -25,11 +25,12 @@ import { NavigationRouter, SelectedChannelStore, Toasts } from "@webpack/common"
 import { ChannelTabsPreview } from "./components.jsx";
 
 export type BasicChannelTabsProps = {
-    guildId: string;
+    guildId: string | undefined;
     channelId: string;
 };
 export interface ChannelTabsProps extends BasicChannelTabsProps {
     id: number;
+    index: number;
 }
 interface PersistedTabs {
     [userId: string]: {
@@ -87,7 +88,8 @@ const openTabHistory: number[] = [];
 function createTab(props: BasicChannelTabsProps, moveToTab?: boolean, messageId?: string) {
     const { channelId, guildId } = props;
     const id = genId();
-    openTabs.push({ ...props, id });
+    openTabs.push({ ...props, id, index: openTabs.length });
+    console.log(openTabs);
     if (moveToTab) setOpenTab(id);
     else return;
 
@@ -105,6 +107,9 @@ function closeTab(id: number) {
     if (openTabs.length <= 1) return;
     const i = openTabs.findIndex(v => v.id === id);
     if (i === -1) return logger.error("Couldn't find channel tab with ID " + id, openTabs);
+    for (let j = i; j < openTabs.length; ++j) {
+        openTabs[j].index--;
+    }
     const closed = openTabs.splice(i, 1);
     closedTabs.push(...closed);
     if (id === currentlyOpenTab) {
@@ -159,7 +164,12 @@ function closeTabsToTheRight(id: number) {
 function handleChannelSwitch(ch: BasicChannelTabsProps) {
     const tab = openTabs.find(c => c.id === currentlyOpenTab)!;
     if (tab === undefined) return logger.error("Couldn't find the currently open channel " + currentlyOpenTab, openTabs);
-    if (tab.channelId !== ch.channelId) openTabs[openTabs.indexOf(tab)] = { id: tab.id, ...ch };
+    if (tab.channelId !== ch.channelId)
+        openTabs[openTabs.indexOf(tab)] = {
+            id: tab.id,
+            index: tab.index,
+            ...ch,
+        };
 }
 
 function isTabSelected(id: number) {
@@ -247,8 +257,15 @@ function openStartupTabs(props: BasicChannelTabsProps & { userId: string; }, upd
 function reopenClosedTab() {
     if (!closedTabs.length) return;
     const tab = closedTabs.pop()!;
-    console.log("reopening", tab);
     createTab(tab, true);
+}
+
+export function repositionTab(startIdx: number, endIdx: number) {
+    const tabToMove = openTabs.splice(startIdx, 1)[0];
+    openTabs.splice(endIdx, 0, tabToMove);
+    for (let i = 0; i < openTabs.length; ++i) {
+        openTabs[i].index = i;
+    }
 }
 
 export const ChannelTabsUtils = {

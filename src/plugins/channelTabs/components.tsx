@@ -24,19 +24,20 @@ import { LazyComponent, useForceUpdater } from "@utils/react.jsx";
 import { filters, find, findByCode, findByCodeLazy, findByPropsLazy, findStoreLazy, mapMangledModuleLazy } from "@webpack";
 import {
     Button, ChannelStore, ContextMenu, FluxDispatcher, Forms, GuildStore, i18n, Menu, ReadStateStore, Text, TypingStore,
-    useDrag, useDrop, useEffect, UserStore, useState, useStateFromStores
+    useDrag, useEffect, UserStore, useState, useStateFromStores
 } from "@webpack/common";
 import { FluxStore } from "@webpack/types";
 import { Channel, Guild, User } from "discord-types/general";
+import { DragEvent } from "react";
 
-import { BasicChannelTabsProps, ChannelTabsProps, channelTabsSettings, ChannelTabsUtils } from "./util.js";
+import { BasicChannelTabsProps, ChannelTabsProps, channelTabsSettings, ChannelTabsUtils, repositionTab } from "./util.js";
 
 const {
     closeCurrentTab, closeOtherTabs, closeTab, closeTabsToTheRight, createTab, handleChannelSwitch,
     isTabSelected, moveToTab, moveToTabRelative, saveTabs, openStartupTabs, reopenClosedTab
 } = ChannelTabsUtils;
 
-enum ChannelTypes {
+const enum ChannelTypes {
     DM = 1,
     GROUP_DM = 3
 }
@@ -146,12 +147,20 @@ function ChannelContextMenu(props: { tab: ChannelTabsProps, update: () => void; 
                 }}
             />
             <Menu.MenuItem
-                key="close-right-tabs"
-                id="close-right-tabs"
-                label="Close Tabs to the Right"
-                disabled={openTabs.indexOf(tab) === openTabs.length - 1}
+                key="make-first-tab"
+                id="make-first-tab"
+                label="Make the first tab"
                 action={() => {
-                    closeTabsToTheRight(tab.id);
+                    repositionTab(tab.index, 0);
+                    update();
+                }}
+            />
+            <Menu.MenuItem
+                key="make-last-tab"
+                id="make-last-tab"
+                label="Make the last tab"
+                action={() => {
+                    repositionTab(tab.index, openTabs.length - 1);
                     update();
                 }}
             />
@@ -242,8 +251,9 @@ function ChannelTabContent(props: ChannelTabsProps & { guild?: Guild, channel?: 
         <Text className={cl("channel-name-text")}>{i18n.Messages.UNKNOWN_CHANNEL}</Text>
     </>;
 }
+
 function ChannelTab(props: ChannelTabsProps) {
-    const guild = GuildStore.getGuild(props.guildId);
+    const guild = props.guildId ? GuildStore.getGuild(props.guildId) : null;
     const channel = ChannelStore.getChannel(props.channelId);
 
     const [{ isDragging }, drag] = useDrag(() => ({
@@ -253,20 +263,21 @@ function ChannelTab(props: ChannelTabsProps) {
         }),
     }));
 
+    // TODO move style into own file
     const tab = <div className={cl("tab-base")} ref={drag} style={{ opacity: isDragging ? 0.5 : 1 }}>
-        <ChannelTabContent {...props} guild={guild} channel={channel} />
+        <ChannelTabContent {...props} guild={guild ?? undefined} channel={channel} />
     </div>;
     return tab;
 }
 
 export function ChannelsTabsContainer(props: BasicChannelTabsProps & { userId: string; }) {
+    const { openTabs } = ChannelTabsUtils;
     let { userId } = props;
     const _update = useForceUpdater();
     function update() {
         _update();
         saveTabs(userId);
     }
-    const { openTabs } = ChannelTabsUtils;
     if (!openTabs.length) openStartupTabs(props, update);
     useEffect(() => {
         const initialRender = () => {
@@ -277,6 +288,12 @@ export function ChannelsTabsContainer(props: BasicChannelTabsProps & { userId: s
             FluxDispatcher.unsubscribe("CONNECTION_OPEN_SUPPLEMENTAL", initialRender);
         };
         FluxDispatcher.subscribe("CONNECTION_OPEN_SUPPLEMENTAL", initialRender);
+        document.addEventListener("keydown", handleKeybinds);
+        FluxDispatcher.subscribe("CHANNEL_SELECT", saveTabs);
+        return () => {
+            document.removeEventListener("keydown", handleKeybinds);
+            FluxDispatcher.unsubscribe("CHANNEL_SELECT", saveTabs);
+        };
     }, []);
 
     function handleKeybinds(e: KeyboardEvent) {
@@ -298,52 +315,54 @@ export function ChannelsTabsContainer(props: BasicChannelTabsProps & { userId: s
             reopenClosedTab();
         }
     }
-    useEffect(() => {
-        document.addEventListener("keydown", handleKeybinds);
-        FluxDispatcher.subscribe("CHANNEL_SELECT", saveTabs);
-        return () => {
-            document.removeEventListener("keydown", handleKeybinds);
-            FluxDispatcher.unsubscribe("CHANNEL_SELECT", saveTabs);
-        };
-    }, []);
 
-    const [, drop] = useDrop(() => ({
-        accept: "vc_ChannelTab",
-        collect: monitor => ({
-            isOver: !!monitor.isOver(),
-        }),
-        drop: (item, monitor) => {
-            // TODO: figure this out
-        },
-    }), []);
+    let dragging = 0;
+    let draggingTo = 0;
+    function handleDragStart(e: DragEvent<HTMLDivElement>, tabIndex: number) {
+        dragging = tabIndex;
+    }
+
+    function handleDragEnter(e: DragEvent<HTMLDivElement>, tabIndex: number) {
+        draggingTo = tabIndex;
+    }
+
+    function handleDragEnd(e: DragEvent<HTMLDivElement>, tabIndex: number) {
+        repositionTab(dragging, draggingTo);
+        _update();
+    }
 
     handleChannelSwitch(props);
 
-    return <div className={cl("container")} ref={drop}>
-        {openTabs.map((ch, i) => <div
-            className={classes(cl("tab"), isTabSelected(ch.id) ? cl("tab-selected") : null)}
-            key={i}
-            onAuxClick={e => {
-                if (e.button === 1 /* middle click */) {
+    return <div className={cl("container")}>
+        {openTabs.map((ch, i) =>
+            <div
+                className={classes(cl("tab"), isTabSelected(ch.id) ? cl("tab-selected") : null)}
+                key={i}
+                onAuxClick={e => {
+                    if (e.button === 1 /* middle click */) {
+                        closeTab(ch.id);
+                        update();
+                    }
+                }}
+                onDragStart={e => handleDragStart(e, i)}
+                onDragEnter={e => handleDragEnter(e, i)}
+                onDragEnd={e => handleDragEnd(e, i)}
+                draggable
+                onContextMenu={e => ContextMenu.open(e, () => <ChannelContextMenu tab={ch} update={update} />)}
+            >
+                <button
+                    className={classes(cl("button"), cl("channel-info"))}
+                    onClick={() => { moveToTab(ch.id); update(); }}
+                >
+                    <ChannelTab {...ch} />
+                </button>
+                {openTabs.length > 1 && <button className={classes(cl("button"), cl("close-button"))} onClick={() => {
                     closeTab(ch.id);
                     update();
-                }
-            }}
-            onContextMenu={e => ContextMenu.open(e, () => <ChannelContextMenu tab={ch} update={update} />)}
-        >
-            <button
-                className={classes(cl("button"), cl("channel-info"))}
-                onClick={() => { moveToTab(ch.id); update(); }}
-            >
-                <ChannelTab {...ch} />
-            </button>
-            {openTabs.length > 1 && <button className={classes(cl("button"), cl("close-button"))} onClick={() => {
-                closeTab(ch.id);
-                update();
-            }}>
-                <XIcon width={16} height={16} />
-            </button>}
-        </div>)
+                }}>
+                    <XIcon width={16} height={16} />
+                </button>}
+            </div>)
         }
         <button onClick={() => {
             createTab(props, true);
@@ -351,14 +370,16 @@ export function ChannelsTabsContainer(props: BasicChannelTabsProps & { userId: s
         }} className={classes(cl("button"), cl("new-button"))}><PlusIcon /></button>
     </div >;
 }
+
 const PreviewTab = (props: ChannelTabsProps) => {
-    const guild = GuildStore.getGuild(props.guildId);
+    const guild = props.guildId ? GuildStore.getGuild(props.guildId) : null;
     const channel = ChannelStore.getChannel(props.channelId);
 
     return <div className={cl("preview-tab")}>
-        <ChannelTabContent {...props} guild={guild} channel={channel} />
+        <ChannelTabContent {...props} guild={guild ?? undefined} channel={channel} />
     </div>;
 };
+
 export function ChannelTabsPreview(p) {
     const id = UserStore.getCurrentUser()?.id;
     if (!id) return <Forms.FormText>there's no logged in account?????</Forms.FormText>;
