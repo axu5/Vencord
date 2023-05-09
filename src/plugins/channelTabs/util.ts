@@ -89,7 +89,6 @@ function createTab(props: BasicChannelTabsProps, moveToTab?: boolean, messageId?
     const { channelId, guildId } = props;
     const id = genId();
     openTabs.push({ ...props, id, index: openTabs.length });
-    console.log(openTabs);
     if (moveToTab) setOpenTab(id);
     else return;
 
