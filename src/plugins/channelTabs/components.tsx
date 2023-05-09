@@ -145,6 +145,15 @@ function ChannelContextMenu(props: { tab: ChannelTabsProps, update: () => void; 
                     update();
                 }}
             />
+            <Menu.MenuItem
+                key="close-tabs-to-the-right"
+                id="close-tabs-to-the-right"
+                label="Close Tabs to the Right"
+                action={() => {
+                    closeTabsToTheRight(tab.id);
+                    update();
+                }}
+            />
         </Menu.MenuGroup>}
     </Menu.Menu>;
 }
