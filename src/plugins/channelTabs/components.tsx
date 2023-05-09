@@ -359,7 +359,7 @@ const PreviewTab = (props: ChannelTabsProps) => {
         <ChannelTabContent {...props} guild={guild} channel={channel} />
     </div>;
 };
-export function ChannelTabsPreivew(p) {
+export function ChannelTabsPreview(p) {
     const id = UserStore.getCurrentUser()?.id;
     if (!id) return <Forms.FormText>there's no logged in account?????</Forms.FormText>;
 

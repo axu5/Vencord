@@ -22,7 +22,7 @@ import { Logger } from "@utils/Logger.js";
 import { OptionType } from "@utils/types.js";
 import { NavigationRouter, SelectedChannelStore, Toasts } from "@webpack/common";
 
-import { ChannelTabsPreivew } from "./components.jsx";
+import { ChannelTabsPreview } from "./components.jsx";
 
 export type BasicChannelTabsProps = {
     guildId: string;
@@ -58,7 +58,7 @@ export const channelTabsSettings = definePluginSettings({
         }],
     },
     tabSet: {
-        component: ChannelTabsPreivew,
+        component: ChannelTabsPreview,
         description: "Select which tabs to open at startup",
         type: OptionType.COMPONENT,
         default: {}
@@ -91,10 +91,14 @@ function createTab(props: BasicChannelTabsProps, moveToTab?: boolean, messageId?
     if (moveToTab) setOpenTab(id);
     else return;
 
-    let path = `/channels/${guildId}/${channelId}`;
-    if (messageId) path += `/${messageId}`;
+    // let path = `/channels/${guildId}/${channelId}`;
+
+    const linkBase = "/channels/";
+    let link = linkBase +
+        (guildId ? `${guildId}/${channelId}` : `@me/${channelId}`);
+    if (messageId) link += `/${messageId}`;
     if (channelId !== SelectedChannelStore.getChannelId() || messageId)
-        NavigationRouter.transitionTo(path);
+        NavigationRouter.transitionTo(link);
 }
 
 function closeTab(id: number) {
@@ -243,6 +247,7 @@ function openStartupTabs(props: BasicChannelTabsProps & { userId: string; }, upd
 function reopenClosedTab() {
     if (!closedTabs.length) return;
     const tab = closedTabs.pop()!;
+    console.log("reopening", tab);
     createTab(tab, true);
 }
 
