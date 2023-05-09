@@ -146,24 +146,6 @@ function ChannelContextMenu(props: { tab: ChannelTabsProps, update: () => void; 
                     update();
                 }}
             />
-            <Menu.MenuItem
-                key="make-first-tab"
-                id="make-first-tab"
-                label="Make the first tab"
-                action={() => {
-                    repositionTab(tab.index, 0);
-                    update();
-                }}
-            />
-            <Menu.MenuItem
-                key="make-last-tab"
-                id="make-last-tab"
-                label="Make the last tab"
-                action={() => {
-                    repositionTab(tab.index, openTabs.length - 1);
-                    update();
-                }}
-            />
         </Menu.MenuGroup>}
     </Menu.Menu>;
 }
