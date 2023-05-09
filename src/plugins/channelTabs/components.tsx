@@ -28,7 +28,6 @@ import {
 } from "@webpack/common";
 import { FluxStore } from "@webpack/types";
 import { Channel, Guild, User } from "discord-types/general";
-import { DragEvent, useRef } from "react";
 
 import { BasicChannelTabsProps, ChannelTabsProps, channelTabsSettings, ChannelTabsUtils, repositionTab } from "./util.js";
 
@@ -256,8 +255,8 @@ export function ChannelsTabsContainer(props: BasicChannelTabsProps & { userId: s
     const { openTabs } = ChannelTabsUtils;
     let { userId } = props;
     const _update = useForceUpdater();
-    const draggingFrom = useRef<number>(0);
-    const draggingTo = useRef<number>(0);
+    let draggingFrom = 0;
+    let draggingTo = 0;
     function update() {
         _update();
         saveTabs(userId);
@@ -300,8 +299,8 @@ export function ChannelsTabsContainer(props: BasicChannelTabsProps & { userId: s
         }
     }
 
-    function handleDragEnd(_e: DragEvent<HTMLDivElement>, tabIndex: number) {
-        repositionTab(draggingFrom.current, draggingTo.current);
+    function handleDragEnd() {
+        repositionTab(draggingFrom, draggingTo);
         _update();
     }
 
@@ -318,9 +317,9 @@ export function ChannelsTabsContainer(props: BasicChannelTabsProps & { userId: s
                         update();
                     }
                 }}
-                onDragStart={() => draggingFrom.current = i}
-                onDragEnter={() => draggingTo.current = i}
-                onDragEnd={e => handleDragEnd(e, i)}
+                onDragStart={() => draggingFrom = i}
+                onDragEnter={() => draggingTo = i}
+                onDragEnd={handleDragEnd}
                 draggable
                 onContextMenu={e => ContextMenu.open(e, () => <ChannelContextMenu tab={ch} update={update} />)}
             >
