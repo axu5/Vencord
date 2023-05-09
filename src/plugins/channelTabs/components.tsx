@@ -149,6 +149,7 @@ function ChannelContextMenu(props: { tab: ChannelTabsProps, update: () => void; 
                 key="close-tabs-to-the-right"
                 id="close-tabs-to-the-right"
                 label="Close Tabs to the Right"
+                disabled={openTabs.indexOf(tab) === openTabs.length - 1}
                 action={() => {
                     closeTabsToTheRight(tab.id);
                     update();
