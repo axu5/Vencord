@@ -18,8 +18,8 @@
 
 import "./settings.css";
 
-import { definePluginSettings } from "@api/settings";
-import { useForceUpdater } from "@utils/misc";
+import { definePluginSettings } from "@api/Settings";
+import { useForceUpdater } from "@utils/react";
 import { OptionType } from "@utils/types";
 import { Button, UserStore } from "@webpack/common";
 import User from "discord-types/general/User";
